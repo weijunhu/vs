@@ -1,0 +1,79 @@
+package higgs_message;
+
+//Tcp相关（即大厅逻辑相关）
+message GameMessage
+{
+	required bytes type = 1;
+	required bytes data = 2;
+}
+message ReqLogin
+{
+	required string account = 1;
+	required string password = 2;
+}
+message AckLogin
+{
+	required uint32 success = 1;
+	required uint32 userid = 2;
+	required string nickname = 3;
+}
+//请求匹配
+message ReqMatch
+{
+	required uint32 userid = 1;
+	required uint32 fight_type = 2;
+}
+message PlayerInfo
+{
+	required uint32 userid = 1;
+	required string nickname = 2;
+}
+//匹配返回
+message NtfMatch
+{
+	repeated PlayerInfo playerinfoList = 1;
+	required uint32 roomid = 2;
+}
+//选择英雄
+message ReqSelectHero
+{
+	required uint32 userid = 1;
+	required uint32 roomid = 2;
+	required uint32 heroid = 3;
+}
+message PlayerHeroInfo
+{
+	required uint32 userid = 1;
+	required uint32 heroid = 2;
+}
+//所有的玩家已经选择英雄完毕
+message NtfSelectHeroFinish
+{
+	repeated PlayerHeroInfo select_herolist = 1;
+}
+
+
+
+//Udp相关（即战斗逻辑相关）
+//游戏开始：进入战斗场景后，通知服务器可以开始，服务器收到所有玩家游戏开始协议的时候，开始发送逻辑帧开始战斗
+message ReqGameStart
+{
+	required uint32 userid = 1;
+	required uint32 roomid = 2;
+}
+message ReqStartMove
+{
+	required uint32 userid = 1;
+	required uint32 roomid = 2;
+}
+message ReqChangeDir
+{
+	required uint32 userid = 1;
+	required uint32 roomid = 2;
+	required int32 angle = 3;
+}
+message ReqEndMove
+{
+	required uint32 userid = 1;
+	required uint32 roomid = 2;
+}
