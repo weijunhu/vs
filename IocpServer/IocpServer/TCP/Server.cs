@@ -7,8 +7,11 @@ namespace IocpServer
 {
     public class Server
     {
+        //连接数量
         private int m_numConnections;
+        //缓存
         private BufferManager m_bufferManager;
+
         private Socket listenSocket;
         private SocketAsyncEventArgsPool m_readWritePool;
         private int m_totalBytesRead;
@@ -20,25 +23,36 @@ namespace IocpServer
         public UserManager m_UserManager;
         public RoomManager m_RoomManager;
 
-
+        /// <summary>
+        ///  构造  
+        /// </summary>
+        /// <param name="numConnections">连接数</param>
+        /// <param name="receiveBufferSize"></param>
+        /// <param name="tRoomCount"></param>
         public Server(int numConnections, int receiveBufferSize, int tRoomCount)
         {
             m_totalBytesRead = 0;
             m_numConnectedSockets = 0;
             m_numConnections = numConnections;
+            //初始化缓存池
             m_bufferManager = new BufferManager(receiveBufferSize * numConnections, receiveBufferSize);
+            //异步套接字池
             m_readWritePool = new SocketAsyncEventArgsPool(numConnections);
+            //创建一个可授权numConnections个许可证的信号量，且初始值为numConnections
             m_maxNumberAcceptedClients = new Semaphore(numConnections, numConnections);
 
+            // 预先分配SocketAsyncEventArgs对象的池
             for (int i = 0; i < m_numConnections; i++)
             {
+                // 创建发送和接收套接字并指定UserToken（SocketAsyncEventArgs）
                 AsyncUserToken userToken = new AsyncUserToken(this);
                 userToken.receiveArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 m_bufferManager.SetBuffer(userToken.receiveArgs);
                 m_readWritePool.Push(userToken);
             }
-
+            //初始化玩家管理器
             m_UserManager = new UserManager(this);
+            //初始化房间管理器
             m_RoomManager = new RoomManager(tRoomCount, this);
         }
 
@@ -53,6 +67,10 @@ namespace IocpServer
             Console.WriteLine("开启Ucp....");
         }
 
+        /// <summary>
+        /// 开始监听连接
+        /// </summary>
+        /// <param name="acceptEventArg"></param>
         void StartAccept(SocketAsyncEventArgs acceptEventArg)
         {
             if (acceptEventArg == null)
@@ -64,6 +82,7 @@ namespace IocpServer
             {
                 acceptEventArg.AcceptSocket = null;
             }
+            //申请一个许可证(等待...)
             m_maxNumberAcceptedClients.WaitOne();
             //接入一个客户端
             bool willRaiseEvent = listenSocket.AcceptAsync(acceptEventArg);
@@ -72,10 +91,17 @@ namespace IocpServer
                 ProcessAccept(acceptEventArg);
             }
         }
+
+        /// <summary>
+        /// 客户端连接成功
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         void AcceptEventArg_Completed(object sender, SocketAsyncEventArgs e)
         {
             ProcessAccept(e);
         }
+
 
         void ProcessAccept(SocketAsyncEventArgs e)
         {
@@ -96,6 +122,11 @@ namespace IocpServer
             }
             StartAccept(e);
         }
+
+        /// <summary>
+        /// This method is called whenever a receive or send operation is completed on a socket 
+        /// </summary>
+        /// <param name="e">SocketAsyncEventArg associated with the completed receive operation</param>
         void IO_Completed(object sender, SocketAsyncEventArgs e)
         {
             AsyncUserToken userToken = e.UserToken as AsyncUserToken;
@@ -115,6 +146,8 @@ namespace IocpServer
                 Console.WriteLine(ex.ToString());
             }
         }
+
+
         public void ProcessReceive(SocketAsyncEventArgs e)
         {
             if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
